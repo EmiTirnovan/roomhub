@@ -26,16 +26,16 @@ EF Core este folosit in Infrastructure, unde se afla DBcontextul si implementari
 
 Draw in text (ASCII arrows) the path of a `POST /api/rooms/{roomId}/bookings` request through your project, with the **real** names of files and classes, from the endpoint to the database.
 
-_(your answer here)_
+sin api - minimal api endpoint - CreateBookingCommand - CreateBookingHandler - create() - repo - dbcontext - sqlite
 
 ## 5. What you rejected from what the AI gave you
 
 Give a concrete example of code or an idea proposed by the AI that you corrected or rejected, and say why.
 
-_(your answer here)_
+Nu am respins nimic, dar am verificat sa fie totul ok cu regulile, dar posibil sa fii scapat anumite detalii
 
 ## 6. If you had 30 more minutes
 
 What would you improve and what risk did you leave in the project?
 
-_(your answer here)_
+Daca as mai avea 30 min as completa mai bine toate md files si as reverifica si testa cate un caz manual pentru fiecare regula in swagger
