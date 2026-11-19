@@ -2,7 +2,7 @@ using RoomHub.Api.Common;
 using RoomHub.Api.Features.Rooms.CreateRoom;
 using RoomHub.Api.Features.Rooms.GetRoom;
 using RoomHub.Api.Models;
-using RoomHub.Api.Repositories;
+using RoomHub.Api.Tests.Fakes;
 
 namespace RoomHub.Api.Tests;
 
@@ -48,8 +48,9 @@ public class RoomTests
     [Fact]
     public async Task CreateRoomHandler_WithValidCommand_PersistsAndReturnsRoom()
     {
-        var repository = new RoomRepository();
-        var handler = new CreateRoomHandler(repository);
+        var repository = new TestRoomRepository();
+        var uow = new TestUnitOfWork();
+        var handler = new CreateRoomHandler(repository, uow);
 
         var result = await handler.Handle(new CreateRoomCommand("Study Room", 8));
 
@@ -57,17 +58,18 @@ public class RoomTests
         Assert.Equal("Study Room", result.Value.Name);
         Assert.Equal(8, result.Value.Capacity);
 
-        var persisted = repository.Get(result.Value.Id);
+        var persisted = await repository.GetByIdAsync(result.Value.Id);
         Assert.NotNull(persisted);
         Assert.Equal("Study Room", persisted.Name);
+        Assert.Equal(1, uow.SaveCount);
     }
 
     [Fact]
     public async Task GetRoomHandler_WhenRoomExists_ReturnsRoom()
     {
-        var repository = new RoomRepository();
+        var repository = new TestRoomRepository();
         var room = Room.Create("Conference A", 20).Value;
-        repository.Add(room);
+        await repository.AddAsync(room);
 
         var handler = new GetRoomHandler(repository);
         var result = await handler.Handle(new GetRoomQuery(room.Id));
@@ -81,7 +83,7 @@ public class RoomTests
     [Fact]
     public async Task GetRoomHandler_WhenRoomMissing_ReturnsNotFound()
     {
-        var repository = new RoomRepository();
+        var repository = new TestRoomRepository();
         var handler = new GetRoomHandler(repository);
 
         var result = await handler.Handle(new GetRoomQuery(Guid.NewGuid()));

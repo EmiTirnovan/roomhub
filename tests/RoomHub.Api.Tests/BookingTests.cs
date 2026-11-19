@@ -3,7 +3,7 @@ using RoomHub.Api.Features.Bookings.CancelBooking;
 using RoomHub.Api.Features.Bookings.CreateBooking;
 using RoomHub.Api.Features.Bookings.GetBooking;
 using RoomHub.Api.Models;
-using RoomHub.Api.Repositories;
+using RoomHub.Api.Tests.Fakes;
 
 namespace RoomHub.Api.Tests;
 
@@ -129,9 +129,10 @@ public class BookingTests
     [Fact]
     public async Task CreateBookingHandler_WhenRoomMissing_ReturnsNotFoundBeforeValidatingBody()
     {
-        var roomRepo = new RoomRepository();
-        var bookingRepo = new BookingRepository();
-        var handler = new CreateBookingHandler(roomRepo, bookingRepo, _timeProvider);
+        var roomRepo = new TestRoomRepository();
+        var bookingRepo = new TestBookingRepository();
+        var uow = new TestUnitOfWork();
+        var handler = new CreateBookingHandler(roomRepo, bookingRepo, uow, _timeProvider);
 
         // Entire body is completely invalid (empty name, past start, negative attendees)
         var invalidCommand = new CreateBookingCommand(
@@ -146,17 +147,19 @@ public class BookingTests
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorType.NotFound, result.Error.Type);
         Assert.Equal("Room.NotFound", result.Error.Code);
+        Assert.Equal(0, uow.SaveCount);
     }
 
     [Fact]
     public async Task CreateBookingHandler_WhenOverlappingActiveBookingExists_ReturnsConflict()
     {
-        var roomRepo = new RoomRepository();
-        var bookingRepo = new BookingRepository();
+        var roomRepo = new TestRoomRepository();
+        var bookingRepo = new TestBookingRepository();
+        var uow = new TestUnitOfWork();
         var room = Room.Create("Room 1", 10).Value;
-        roomRepo.Add(room);
+        await roomRepo.AddAsync(room);
 
-        var handler = new CreateBookingHandler(roomRepo, bookingRepo, _timeProvider);
+        var handler = new CreateBookingHandler(roomRepo, bookingRepo, uow, _timeProvider);
 
         // First booking: 10:00 - 12:00
         var b1 = await handler.Handle(new CreateBookingCommand(
@@ -183,12 +186,13 @@ public class BookingTests
     [Fact]
     public async Task CreateBookingHandler_WhenIntervalsOnlyTouch_IsAllowed()
     {
-        var roomRepo = new RoomRepository();
-        var bookingRepo = new BookingRepository();
+        var roomRepo = new TestRoomRepository();
+        var bookingRepo = new TestBookingRepository();
+        var uow = new TestUnitOfWork();
         var room = Room.Create("Room 1", 10).Value;
-        roomRepo.Add(room);
+        await roomRepo.AddAsync(room);
 
-        var handler = new CreateBookingHandler(roomRepo, bookingRepo, _timeProvider);
+        var handler = new CreateBookingHandler(roomRepo, bookingRepo, uow, _timeProvider);
 
         // Booking 1: 10:00 - 12:00
         var b1 = await handler.Handle(new CreateBookingCommand(
@@ -213,15 +217,16 @@ public class BookingTests
     [Fact]
     public async Task CreateBookingHandler_WhenExistingBookingCancelled_FreesInterval()
     {
-        var roomRepo = new RoomRepository();
-        var bookingRepo = new BookingRepository();
+        var roomRepo = new TestRoomRepository();
+        var bookingRepo = new TestBookingRepository();
+        var uow = new TestUnitOfWork();
         var room = Room.Create("Room 1", 10).Value;
-        roomRepo.Add(room);
+        await roomRepo.AddAsync(room);
 
-        var createHandler = new CreateBookingHandler(roomRepo, bookingRepo, _timeProvider);
-        var cancelHandler = new CancelBookingHandler(bookingRepo);
+        var createHandler = new CreateBookingHandler(roomRepo, bookingRepo, uow, _timeProvider);
+        var cancelHandler = new CancelBookingHandler(bookingRepo, uow, _timeProvider);
 
-        // Booking 1: 10:00 - 12:00
+        // Booking 1: 10:00 - 12:00 (more than 60 mins from 08:00)
         var b1 = await createHandler.Handle(new CreateBookingCommand(
             room.Id,
             "Alice",
@@ -248,13 +253,14 @@ public class BookingTests
     [Fact]
     public async Task CancelBooking_WhenAlreadyCancelled_ReturnsConflict()
     {
-        var roomRepo = new RoomRepository();
-        var bookingRepo = new BookingRepository();
+        var roomRepo = new TestRoomRepository();
+        var bookingRepo = new TestBookingRepository();
+        var uow = new TestUnitOfWork();
         var room = Room.Create("Room 1", 10).Value;
-        roomRepo.Add(room);
+        await roomRepo.AddAsync(room);
 
-        var createHandler = new CreateBookingHandler(roomRepo, bookingRepo, _timeProvider);
-        var cancelHandler = new CancelBookingHandler(bookingRepo);
+        var createHandler = new CreateBookingHandler(roomRepo, bookingRepo, uow, _timeProvider);
+        var cancelHandler = new CancelBookingHandler(bookingRepo, uow, _timeProvider);
 
         var b1 = await createHandler.Handle(new CreateBookingCommand(
             room.Id,
@@ -277,8 +283,9 @@ public class BookingTests
     [Fact]
     public async Task CancelBooking_WhenBookingNotFound_ReturnsNotFound()
     {
-        var bookingRepo = new BookingRepository();
-        var cancelHandler = new CancelBookingHandler(bookingRepo);
+        var bookingRepo = new TestBookingRepository();
+        var uow = new TestUnitOfWork();
+        var cancelHandler = new CancelBookingHandler(bookingRepo, uow, _timeProvider);
 
         var result = await cancelHandler.Handle(new CancelBookingCommand(Guid.NewGuid()));
 
@@ -290,12 +297,13 @@ public class BookingTests
     [Fact]
     public async Task GetBooking_WhenExists_ReturnsBookingDetails()
     {
-        var roomRepo = new RoomRepository();
-        var bookingRepo = new BookingRepository();
+        var roomRepo = new TestRoomRepository();
+        var bookingRepo = new TestBookingRepository();
+        var uow = new TestUnitOfWork();
         var room = Room.Create("Room 1", 10).Value;
-        roomRepo.Add(room);
+        await roomRepo.AddAsync(room);
 
-        var createHandler = new CreateBookingHandler(roomRepo, bookingRepo, _timeProvider);
+        var createHandler = new CreateBookingHandler(roomRepo, bookingRepo, uow, _timeProvider);
         var getHandler = new GetBookingHandler(bookingRepo);
 
         var created = await createHandler.Handle(new CreateBookingCommand(

@@ -1,0 +1,11 @@
+using RoomHub.Api.Models;
+
+namespace RoomHub.Api.Domain.Repositories;
+
+public interface IBookingRepository
+{
+    Task<Booking?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<List<Booking>> ListForRoomAsync(Guid roomId, CancellationToken cancellationToken = default);
+    Task<int> CountActiveForParticipantOnDayAsync(string bookedBy, DateTime utcDate, CancellationToken cancellationToken = default);
+    Task AddAsync(Booking booking, CancellationToken cancellationToken = default);
+}

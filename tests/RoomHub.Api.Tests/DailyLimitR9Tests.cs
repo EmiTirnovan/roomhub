@@ -2,7 +2,7 @@ using RoomHub.Api.Common;
 using RoomHub.Api.Features.Bookings.CancelBooking;
 using RoomHub.Api.Features.Bookings.CreateBooking;
 using RoomHub.Api.Models;
-using RoomHub.Api.Repositories;
+using RoomHub.Api.Tests.Fakes;
 
 namespace RoomHub.Api.Tests;
 
@@ -15,7 +15,7 @@ public class DailyLimitR9Tests
     {
         var (roomRepo, bookingRepo, handler, _) = CreateSetup();
         var room = Room.Create("Room 1", 10).Value;
-        roomRepo.Add(room);
+        await roomRepo.AddAsync(room);
 
         var result = await handler.Handle(new CreateBookingCommand(
             room.Id,
@@ -32,7 +32,7 @@ public class DailyLimitR9Tests
     {
         var (roomRepo, bookingRepo, handler, _) = CreateSetup();
         var room = Room.Create("Room 1", 10).Value;
-        roomRepo.Add(room);
+        await roomRepo.AddAsync(room);
 
         // Booking 1: 08:00 - 10:00
         var b1 = await handler.Handle(new CreateBookingCommand(
@@ -58,7 +58,7 @@ public class DailyLimitR9Tests
     {
         var (roomRepo, bookingRepo, handler, _) = CreateSetup();
         var room = Room.Create("Room 1", 10).Value;
-        roomRepo.Add(room);
+        await roomRepo.AddAsync(room);
 
         // 1st booking
         await handler.Handle(new CreateBookingCommand(
@@ -96,9 +96,9 @@ public class DailyLimitR9Tests
         var roomA = Room.Create("Room A", 10).Value;
         var roomB = Room.Create("Room B", 10).Value;
         var roomC = Room.Create("Room C", 10).Value;
-        roomRepo.Add(roomA);
-        roomRepo.Add(roomB);
-        roomRepo.Add(roomC);
+        await roomRepo.AddAsync(roomA);
+        await roomRepo.AddAsync(roomB);
+        await roomRepo.AddAsync(roomC);
 
         // 1st booking in Room A
         var b1 = await handler.Handle(new CreateBookingCommand(
@@ -136,7 +136,7 @@ public class DailyLimitR9Tests
     {
         var (roomRepo, bookingRepo, handler, _) = CreateSetup();
         var room = Room.Create("Room 1", 10).Value;
-        roomRepo.Add(room);
+        await roomRepo.AddAsync(room);
 
         // Two bookings on 2026-11-20
         await handler.Handle(new CreateBookingCommand(
@@ -169,9 +169,9 @@ public class DailyLimitR9Tests
     {
         var (roomRepo, bookingRepo, handler, cancelHandler) = CreateSetup();
         var room = Room.Create("Room 1", 10).Value;
-        roomRepo.Add(room);
+        await roomRepo.AddAsync(room);
 
-        // Booking 1: 08:00 - 10:00
+        // Booking 1: 08:00 - 10:00 (more than 60m from 00:00)
         var b1 = await handler.Handle(new CreateBookingCommand(
             room.Id,
             "Participant1",
@@ -209,7 +209,7 @@ public class DailyLimitR9Tests
     {
         var (roomRepo, bookingRepo, handler, cancelHandler) = CreateSetup();
         var room = Room.Create("Room 1", 10).Value;
-        roomRepo.Add(room);
+        await roomRepo.AddAsync(room);
 
         // Booking 1
         var b1 = await handler.Handle(new CreateBookingCommand(
@@ -254,7 +254,7 @@ public class DailyLimitR9Tests
     {
         var (roomRepo, bookingRepo, handler, _) = CreateSetup();
         var room = Room.Create("Room 1", 10).Value;
-        roomRepo.Add(room);
+        await roomRepo.AddAsync(room);
 
         // Booking on 2026-11-20 at 22:00 UTC (finishing 23:30 UTC)
         var b1 = await handler.Handle(new CreateBookingCommand(
@@ -294,12 +294,13 @@ public class DailyLimitR9Tests
         Assert.Equal("Booking.DailyLimitExceeded", b4.Error.Code);
     }
 
-    private (RoomRepository, BookingRepository, CreateBookingHandler, CancelBookingHandler) CreateSetup()
+    private (TestRoomRepository, TestBookingRepository, CreateBookingHandler, CancelBookingHandler) CreateSetup()
     {
-        var roomRepo = new RoomRepository();
-        var bookingRepo = new BookingRepository();
-        var createHandler = new CreateBookingHandler(roomRepo, bookingRepo, _timeProvider);
-        var cancelHandler = new CancelBookingHandler(bookingRepo);
+        var roomRepo = new TestRoomRepository();
+        var bookingRepo = new TestBookingRepository();
+        var uow = new TestUnitOfWork();
+        var createHandler = new CreateBookingHandler(roomRepo, bookingRepo, uow, _timeProvider);
+        var cancelHandler = new CancelBookingHandler(bookingRepo, uow, _timeProvider);
         return (roomRepo, bookingRepo, createHandler, cancelHandler);
     }
 }
