@@ -2,7 +2,6 @@ using RoomHub.Api.Models;
 
 namespace RoomHub.Api.Repositories;
 
-// Starter: in-memory data. It is lost when the application restarts.
 public class BookingRepository
 {
     private readonly List<Booking> _bookings = new();
@@ -29,6 +28,18 @@ public class BookingRepository
         lock (_lock)
         {
             return _bookings.Where(b => b.RoomId == roomId).ToList();
+        }
+    }
+
+    public int CountActiveForParticipantOnDay(string bookedBy, DateTime utcDate)
+    {
+        var targetDate = utcDate.Date;
+        lock (_lock)
+        {
+            return _bookings.Count(b =>
+                b.Status == BookingStatus.Active &&
+                string.Equals(b.BookedBy, bookedBy.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                b.StartUtc.Date == targetDate);
         }
     }
 }
